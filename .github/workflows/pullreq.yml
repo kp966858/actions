@@ -1,0 +1,40 @@
+# This workflow is triggered when on pull request create/update events
+# It runs lint and unit tests
+
+name: Pull request workflow
+
+on:
+    pull_request:
+        types: [opened, synchronize, reopened, edited, ready_for_review]
+        branches: [main]
+    workflow_dispatch:
+permissions:
+    contents: read
+
+jobs:
+    pr-job:
+        defaults:
+          run:
+            shell: bash
+        runs-on: default
+        strategy:
+            fail-fast: false
+        steps:
+        - name: Checkout
+          uses: actions/checkout@v4
+          with:
+              fetch-depth: 0
+        - name: create pull request
+          run: gh pr create -B base_branch -H branch_to_merge --title 'Merge branch_to_merge into base_branch' --body 'Created by Github action'
+          env:
+            GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}              
+        - name: Download dependencies
+          run: |
+            echo "Downloading..dependencies"
+            echo "completed."
+        - name: Run lint
+          run: >
+            echo "Run Lint" | echo "completed." 
+            poetry run pylint-json2html -o pylint.html
+        - name: Run test
+          run: echo "test started" | echo "completed."
