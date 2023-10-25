@@ -1,0 +1,172 @@
+https://github.com/n3wt0n/ActionsTest/blob/main/.github/workflows/tokenExamples.yml
+
+
+.github/workflows/ring-deploy.yml
+
+# RING DEPLOYMENT EXAMPLE
+# ====================================
+# This workflow will deploy a new version of the application progressively to the production environments
+#
+# Current flow:
+# ------------
+# deploy shared db > approval > deploy shared webapi > deploy shared cdn > approval 
+# > deploy AA db > deploy AA webapi # > deploy AA cdn  > approval > 
+# > deploy BB db > deploy BB webapi # > deploy B cdn  >... > deploy cms
+#
+# We have approval after the Shared DB deploy, but not the others
+# Everything else after Shared deployed “in batch” for each app
+# And Shared CMS as last thing
+
+name: Ring Production Deployment
+on:
+  - deployment
+  - workflow_dispatch
+
+jobs:
+  deploy-shared-db:
+    uses: ./.github/workflows/ring-deploy-db-template.yaml
+    with:
+      tenant-name: Shared
+            
+  deploy-shared-api:
+    needs: deploy-shared-db
+    uses: ./.github/workflows/ring-deploy-api-template.yaml
+    with:
+      tenant-name: Shared
+      tenant-url: http://api.myapp.com
+
+  deploy-AA:
+    needs: deploy-shared-api
+    uses: ./.github/workflows/ring-deploy-db+api-template.yaml
+    with:
+      tenant-name: AA
+      tenant-url: http://aa.api.myapp.com
+
+  deploy-BB:
+    needs: deploy-AA
+    uses: ./.github/workflows/ring-deploy-db+api-template.yaml
+    with:
+      tenant-name: BB
+      tenant-url: http://bb.api.myapp.com
+            
+  deploy-shared-cms:
+    runs-on: ubuntu-latest
+    needs: deploy-BB
+    environment:
+      name:  Ring - Production - Shared CMS
+      url: https://myapp.com/
+    steps:
+      - run: echo "CMS"
+        name: Deploy CMS
+
+.github/workflows/ring-deploy-api-template.yaml
+name: Template for DB deployment
+
+on:
+  workflow_call:
+    inputs:
+      tenant-name:
+        required: true
+        type: string
+
+jobs:
+  db-deploy:
+    runs-on: ubuntu-latest
+    environment:
+        name: Ring - Production - ${{ inputs.tenant-name }} DB
+    steps:
+        - run: echo "DB - ${{ inputs.tenant-name }}"
+          name: Deploy DB - ${{ inputs.tenant-name }}
+
+
+name: Template for DB+API deployment
+
+on:
+  workflow_call:
+    inputs:
+      tenant-name:
+        required: true
+        type: string
+      tenant-url:
+        required: true
+        type: string
+
+jobs:
+  db-deploy:
+    uses: ./.github/workflows/ring-deploy-db-template.yaml
+    with:
+      tenant-name: ${{inputs.tenant-name}}
+  api-deploy:
+    uses: ./.github/workflows/ring-deploy-api-template.yaml
+    needs: db-deploy
+    with:
+      tenant-name: ${{inputs.tenant-name}}
+      tenant-url: ${{inputs.tenant-url}}
+
+
+  .github/workflows/ring-deploy-db-template.yaml                
+
+  name: Template for DB deployment
+
+on:
+  workflow_call:
+    inputs:
+      tenant-name:
+        required: true
+        type: string
+
+jobs:
+  db-deploy:
+    runs-on: ubuntu-latest
+    environment:
+        name: Ring - Production - ${{ inputs.tenant-name }} DB
+    steps:
+        - run: echo "DB - ${{ inputs.tenant-name }}"
+          name: Deploy DB - ${{ inputs.tenant-name }}
+
+
+
+
+          .github/workflows/on-push-job.yml
+
+          name: GitHub Actions Demo
+
+run-name: ${{ github.actor }} is testing out GitHub Actions 🚀
+
+on:
+  workflow_call:
+
+jobs:
+  Explore-GitHub-Actions:
+    runs-on: ubuntu-latest
+    steps:
+      - run: echo "🎉 The job was automatically triggered by a ${{ github.event_name }} event."
+      - run: echo "🐧 This job is now running on a ${{ runner.os }} server hosted by GitHub!"
+      - run: echo "🔎 The name of your branch is ${{ github.ref }} and your repository is ${{ github.repository }}."
+      - name: Check out repository code
+        uses: actions/checkout@v3
+      - run: echo "💡 The ${{ github.repository }} repository has been cloned to the runner."
+      - run: echo "🖥️ The workflow is now ready to test your code on the runner."
+      - name: List files in the repository
+        run: |
+          ls ${{ github.workspace }}
+      - run: echo "🍏 This job's status is ${{ job.status }}."
+
+.github/workflows/manual-trigger-job.yml
+
+name: Github Actions Input Demo
+
+run-name: ${{ github.actor }} is testing out GitHub Actions 🚀
+
+on:
+  workflow_call:
+
+jobs:
+  Explore-GitHub-Actions:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Print the input name to STDOUT
+        run: echo The username is ${{ inputs.username }}
+        shell: bash
+
+        
